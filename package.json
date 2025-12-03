@@ -2,7 +2,7 @@
   "name": "yaml2mcp",
   "displayName": "YAML2MCP",
   "description": "Manage MCP servers using YAML configuration with dynamic start/stop capabilities. Transpiles YAML configs to JSON for IDE compatibility.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "adefemi171",
   "license": "MIT",
   "repository": {
