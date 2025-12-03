@@ -84,15 +84,49 @@ jobs:
         run: npx @vscode/vsce package --no-yarn
 
       - name: Publish to VS Code Marketplace
+        id: publish_vscode
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx @vscode/vsce publish --pat $VSCE_PAT
+        run: |
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          OUTPUT=$(npx @vscode/vsce publish --pat $VSCE_PAT 2>&1) || EXIT_CODE=$?
+          if [ ${EXIT_CODE:-0} -ne 0 ]; then
+            if echo "$OUTPUT" | grep -qi "already exists\|already published"; then
+              echo "⚠️ Version $VERSION already exists in VS Code Marketplace. Skipping."
+              echo "published=false" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              echo "❌ Failed to publish to VS Code Marketplace:"
+              echo "$OUTPUT"
+              exit $EXIT_CODE
+            fi
+          else
+            echo "✅ Successfully published version $VERSION to VS Code Marketplace"
+            echo "published=true" >> $GITHUB_OUTPUT
+          fi
         continue-on-error: false
 
       - name: Publish to Open VSX Registry
+        id: publish_ovsx
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        run: npx ovsx publish --pat $OVSX_PAT
+        run: |
+          VERSION="${{ needs.validate-version.outputs.version }}"
+          OUTPUT=$(npx ovsx publish --pat $OVSX_PAT 2>&1) || EXIT_CODE=$?
+          if [ ${EXIT_CODE:-0} -ne 0 ]; then
+            if echo "$OUTPUT" | grep -qi "already exists\|already published"; then
+              echo "⚠️ Version $VERSION already exists in Open VSX Registry. Skipping."
+              echo "published=false" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              echo "❌ Failed to publish to Open VSX Registry:"
+              echo "$OUTPUT"
+              exit $EXIT_CODE
+            fi
+          else
+            echo "✅ Successfully published version $VERSION to Open VSX Registry"
+            echo "published=true" >> $GITHUB_OUTPUT
+          fi
         continue-on-error: false
 
       - name: Get VSIX filename
