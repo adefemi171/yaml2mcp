@@ -1,0 +1,43 @@
+# Full-Featured MCP Configuration Example
+# Shows all available configuration options
+
+version: "1.0"
+
+servers:
+  - name: production-server
+    command: node
+    args:
+      - dist/server.js
+      - --port
+      - "8080"
+    env:
+      NODE_ENV: production
+      API_KEY: ${API_KEY}
+      LOG_LEVEL: info
+    cwd: /path/to/server
+
+  - name: development-server
+    command: npm
+    args:
+      - run
+      - dev
+    env:
+      NODE_ENV: development
+      DEBUG: "*"
+    cwd: ./server
+
+  - name: python-server
+    command: python3
+    args:
+      - -m
+      - uvicorn
+      - main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    env:
+      PYTHONPATH: /usr/local/lib/python3.11/site-packages
+      DATABASE_URL: postgresql://localhost/mydb
+    cwd: ./python-server
+

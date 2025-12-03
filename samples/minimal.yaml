@@ -1,0 +1,11 @@
+# Minimal MCP Configuration Example
+# This shows the simplest possible configuration
+
+version: "1.0"
+
+servers:
+  - name: my-server
+    command: node
+    args:
+      - server.js
+

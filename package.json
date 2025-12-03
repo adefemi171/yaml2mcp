@@ -1,0 +1,139 @@
+{
+  "name": "yaml2mcp",
+  "displayName": "YAML2MCP",
+  "description": "Manage MCP servers using YAML configuration with dynamic start/stop capabilities. Transpiles YAML configs to JSON for IDE compatibility.",
+  "version": "0.1.0",
+  "publisher": "YOUR-PUBLISHER-ID",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adefemi171/yaml2mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/adefemi171/yaml2mcp/issues"
+  },
+  "homepage": "https://github.com/adefemi171/yaml2mcp#readme",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "yaml",
+    "server-management",
+    "configuration",
+    "mcp-servers"
+  ],
+  "categories": [
+    "Other"
+  ],
+  "engines": {
+    "vscode": "^1.74.0",
+    "node": ">=18.0.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "yaml2mcp.startServer",
+        "title": "Start MCP Server",
+        "icon": "$(play)"
+      },
+      {
+        "command": "yaml2mcp.stopServer",
+        "title": "Stop MCP Server",
+        "icon": "$(stop)"
+      },
+      {
+        "command": "yaml2mcp.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "yaml2mcp.openConfig",
+        "title": "Open YAML Config"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "yaml2mcp-container",
+          "title": "YAML2MCP",
+          "icon": "$(server-process)"
+        }
+      ]
+    },
+    "views": {
+      "yaml2mcp-container": [
+        {
+          "id": "yaml2mcp",
+          "name": "MCP Servers",
+          "when": "true"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "yaml2mcp.refresh",
+          "when": "view == yaml2mcp",
+          "group": "navigation"
+        },
+        {
+          "command": "yaml2mcp.openConfig",
+          "when": "view == yaml2mcp",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "yaml2mcp.startServer",
+          "when": "view == yaml2mcp && viewItem == stopped",
+          "group": "inline"
+        },
+        {
+          "command": "yaml2mcp.stopServer",
+          "when": "view == yaml2mcp && viewItem == running",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "YAML2MCP",
+      "properties": {
+        "yaml2mcp.configPath": {
+          "type": "string",
+          "default": "${workspaceFolder}/mcp.yaml",
+          "description": "Path to the MCP YAML configuration file"
+        },
+        "yaml2mcp.mcpJsonPath": {
+          "type": "string",
+          "default": "${workspaceFolder}/.vscode/mcp.json",
+          "description": "Path to the generated mcp.json file"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.74.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "@types/js-yaml": "^4.0.9"
+  }
+}
+
+
