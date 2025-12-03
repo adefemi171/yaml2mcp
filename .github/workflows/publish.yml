@@ -50,6 +50,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate-version
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    permissions:
+      contents: write
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -57,6 +60,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -136,12 +140,17 @@ jobs:
 
       - name: Create Git tag and commit version update
         if: github.event_name != 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ needs.validate-version.outputs.version }}"
           TAG="v$VERSION"
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Configure git to use the token
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
           
           # Commit version update if there are changes
           if [ -n "$(git status --porcelain)" ]; then
