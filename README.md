@@ -1,4 +1,8 @@
-# 🔄⚙️ YAML2MCP
+<div align="center">
+  <img src="assets/yaml2mcp.png" alt="YAML2MCP Logo" width="200"/>
+  
+  # 🔄⚙️ YAML2MCP
+</div>
 
 A VS Code extension that helps you manage MCP (Model Context Protocol) servers using YAML configuration files. This extension provides a user-friendly interface to start, stop, and monitor MCP servers, automatically transpiling your YAML configuration to the JSON format required by IDEs.
 

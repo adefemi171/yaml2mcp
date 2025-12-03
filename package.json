@@ -3,7 +3,7 @@
   "displayName": "YAML2MCP",
   "description": "Manage MCP servers using YAML configuration with dynamic start/stop capabilities. Transpiles YAML configs to JSON for IDE compatibility.",
   "version": "0.1.0",
-  "publisher": "YOUR-PUBLISHER-ID",
+  "publisher": "adefemi171",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -13,6 +13,7 @@
     "url": "https://github.com/adefemi171/yaml2mcp/issues"
   },
   "homepage": "https://github.com/adefemi171/yaml2mcp#readme",
+  "icon": "assets/yaml2mcp.png",
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -25,8 +26,7 @@
     "Other"
   ],
   "engines": {
-    "vscode": "^1.74.0",
-    "node": ">=18.0.0"
+    "vscode": "^1.74.0"
   },
   "activationEvents": [
     "onStartupFinished"
@@ -120,20 +120,35 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/index.js",
+    "test:watch": "npm run watch & npm run test",
+    "package": "vsce package"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.10.0",
     "@types/vscode": "^1.74.0",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^2.32.0",
     "eslint": "^8.54.0",
-    "typescript": "^5.3.2"
+    "glob": "^10.5.0",
+    "mocha": "^10.8.2",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.3.2",
+    "webpack": "^5.103.0",
+    "webpack-cli": "^6.0.1"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0",
-    "@types/js-yaml": "^4.0.9"
-  }
+    "@types/js-yaml": "^4.0.9",
+    "js-yaml": "^4.1.0"
+  },
+  "bundledDependencies": [
+    "js-yaml"
+  ],
+  "bundleDependencies": [
+    "js-yaml"
+  ]
 }
-
-

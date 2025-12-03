@@ -12,95 +12,119 @@ let treeDataProvider: McpTreeDataProvider;
 let configWatcher: vscode.FileSystemWatcher | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('YAML2MCP extension is now active');
+  try {
+    console.log('YAML2MCP extension is now active');
 
-  processManager = new ProcessManager();
-  treeDataProvider = new McpTreeDataProvider(processManager);
+    processManager = new ProcessManager();
+    treeDataProvider = new McpTreeDataProvider(processManager);
 
-  const treeView = vscode.window.createTreeView('yaml2mcp', {
-    treeDataProvider: treeDataProvider,
-    showCollapseAll: false
-  });
+    const treeView = vscode.window.createTreeView('yaml2mcp', {
+      treeDataProvider: treeDataProvider,
+      showCollapseAll: false
+    });
 
-  const config = vscode.workspace.getConfiguration('yaml2mcp');
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-  
-  let yamlPath: string | undefined;
-  let jsonPath: string | undefined;
-  
-  if (workspaceFolder) {
-    yamlPath = resolvePath(config.get<string>('configPath', '${workspaceFolder}/mcp.yaml'), workspaceFolder);
-    jsonPath = resolvePath(config.get<string>('mcpJsonPath', '${workspaceFolder}/.vscode/mcp.json'), workspaceFolder);
-
-    loadAndSyncConfig(yamlPath, jsonPath);
-    setupConfigWatcher(yamlPath, jsonPath);
-  } else {
-    vscode.window.showInformationMessage('YAML2MCP: Open a workspace folder to use the extension');
-    treeDataProvider.refresh();
-  }
-
-  const getPaths = (): { yamlPath: string; jsonPath: string } | null => {
-    const currentWorkspace = vscode.workspace.workspaceFolders?.[0];
-    if (!currentWorkspace) {
-      vscode.window.showWarningMessage('YAML2MCP: Please open a workspace folder first');
-      return null;
-    }
-    const yaml = resolvePath(config.get<string>('configPath', '${workspaceFolder}/mcp.yaml'), currentWorkspace);
-    const json = resolvePath(config.get<string>('mcpJsonPath', '${workspaceFolder}/.vscode/mcp.json'), currentWorkspace);
-    return { yamlPath: yaml, jsonPath: json };
-  };
-
-  const startCommand = vscode.commands.registerCommand('yaml2mcp.startServer', async (item: ServerTreeItem) => {
-    if (!item || item.isPlaceholder) {
-      return;
-    }
-
-    const paths = getPaths();
-    if (!paths) return;
-    await startServer(item.label, paths.yamlPath, paths.jsonPath);
-  });
-
-  const stopCommand = vscode.commands.registerCommand('yaml2mcp.stopServer', async (item: ServerTreeItem) => {
-    if (!item || item.isPlaceholder) {
-      return;
-    }
-
-    const paths = getPaths();
-    if (!paths) return;
-    await stopServer(item.label, paths.yamlPath, paths.jsonPath);
-  });
-
-  const refreshCommand = vscode.commands.registerCommand('yaml2mcp.refresh', () => {
-    const paths = getPaths();
-    if (!paths) return;
-    loadAndSyncConfig(paths.yamlPath, paths.jsonPath);
-    treeDataProvider.refresh();
-  });
-
-  const openConfigCommand = vscode.commands.registerCommand('yaml2mcp.openConfig', () => {
-    const paths = getPaths();
-    if (!paths) return;
+    const config = vscode.workspace.getConfiguration('yaml2mcp');
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     
-    if (fs.existsSync(paths.yamlPath)) {
-      vscode.window.showTextDocument(vscode.Uri.file(paths.yamlPath));
+    let yamlPath: string | undefined;
+    let jsonPath: string | undefined;
+    
+    if (workspaceFolder) {
+      try {
+        yamlPath = resolvePath(config.get<string>('configPath', '${workspaceFolder}/mcp.yaml'), workspaceFolder);
+        jsonPath = resolvePath(config.get<string>('mcpJsonPath', '${workspaceFolder}/.vscode/mcp.json'), workspaceFolder);
+
+        loadAndSyncConfig(yamlPath, jsonPath);
+        setupConfigWatcher(yamlPath, jsonPath);
+      } catch (error: any) {
+        console.error('Error loading config:', error);
+      }
     } else {
-      const defaultConfig = ConfigParser.createDefaultConfig();
-      ConfigParser.saveYamlConfig(paths.yamlPath, defaultConfig);
-      vscode.window.showTextDocument(vscode.Uri.file(paths.yamlPath));
-      vscode.window.showInformationMessage('Created default MCP YAML configuration');
+      treeDataProvider.refresh();
     }
-  });
 
-  context.subscriptions.push(
-    treeView,
-    startCommand,
-    stopCommand,
-    refreshCommand,
-    openConfigCommand
-  );
+    const getPaths = (): { yamlPath: string; jsonPath: string } | null => {
+      const currentWorkspace = vscode.workspace.workspaceFolders?.[0];
+      if (!currentWorkspace) {
+        return null;
+      }
+      const yaml = resolvePath(config.get<string>('configPath', '${workspaceFolder}/mcp.yaml'), currentWorkspace);
+      const json = resolvePath(config.get<string>('mcpJsonPath', '${workspaceFolder}/.vscode/mcp.json'), currentWorkspace);
+      return { yamlPath: yaml, jsonPath: json };
+    };
 
-  if (configWatcher) {
-    context.subscriptions.push(configWatcher);
+    const startCommand = vscode.commands.registerCommand('yaml2mcp.startServer', async (item: ServerTreeItem) => {
+      if (!item || item.isPlaceholder) {
+        return;
+      }
+
+      const paths = getPaths();
+      if (!paths) {
+        vscode.window.showWarningMessage('YAML2MCP: Please open a workspace folder first');
+        return;
+      }
+      await startServer(item.label, paths.yamlPath, paths.jsonPath);
+    });
+
+    const stopCommand = vscode.commands.registerCommand('yaml2mcp.stopServer', async (item: ServerTreeItem) => {
+      if (!item || item.isPlaceholder) {
+        return;
+      }
+
+      const paths = getPaths();
+      if (!paths) {
+        vscode.window.showWarningMessage('YAML2MCP: Please open a workspace folder first');
+        return;
+      }
+      await stopServer(item.label, paths.yamlPath, paths.jsonPath);
+    });
+
+    const refreshCommand = vscode.commands.registerCommand('yaml2mcp.refresh', () => {
+      const paths = getPaths();
+      if (!paths) {
+        vscode.window.showWarningMessage('YAML2MCP: Please open a workspace folder first');
+        treeDataProvider.refresh();
+        return;
+      }
+      loadAndSyncConfig(paths.yamlPath, paths.jsonPath);
+      treeDataProvider.refresh();
+    });
+
+    const openConfigCommand = vscode.commands.registerCommand('yaml2mcp.openConfig', () => {
+      const paths = getPaths();
+      if (!paths) {
+        vscode.window.showWarningMessage('YAML2MCP: Please open a workspace folder first');
+        return;
+      }
+      
+      try {
+        if (fs.existsSync(paths.yamlPath)) {
+          vscode.window.showTextDocument(vscode.Uri.file(paths.yamlPath));
+        } else {
+          const defaultConfig = ConfigParser.createDefaultConfig();
+          ConfigParser.saveYamlConfig(paths.yamlPath, defaultConfig);
+          vscode.window.showTextDocument(vscode.Uri.file(paths.yamlPath));
+          vscode.window.showInformationMessage('Created default MCP YAML configuration');
+        }
+      } catch (error: any) {
+        vscode.window.showErrorMessage(`Failed to open config: ${error.message}`);
+      }
+    });
+
+    context.subscriptions.push(
+      treeView,
+      startCommand,
+      stopCommand,
+      refreshCommand,
+      openConfigCommand
+    );
+
+    if (configWatcher) {
+      context.subscriptions.push(configWatcher);
+    }
+  } catch (error: any) {
+    console.error('Failed to activate YAML2MCP extension:', error);
+    vscode.window.showErrorMessage(`YAML2MCP extension failed to activate: ${error.message}`);
   }
 }
 
@@ -164,7 +188,7 @@ async function startServer(serverName: string, yamlPath: string, jsonPath: strin
       return;
     }
 
-    await processManager.startServer(serverConfig, (name) => {
+    await processManager.startServer(serverConfig, (_name) => {
       loadAndSyncConfig(yamlPath, jsonPath);
       treeDataProvider.refresh();
     });
