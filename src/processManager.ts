@@ -13,6 +13,11 @@ export class ProcessManager {
         return;
       }
 
+      if (!config.command) {
+        reject(new Error(`Server ${config.name} is missing required 'command' field`));
+        return;
+      }
+
       try {
         const options: child_process.SpawnOptions = {
           stdio: 'pipe',
@@ -32,7 +37,7 @@ export class ProcessManager {
         this.serverStatuses.set(config.name, status);
         this.processes.set(config.name, childProcess);
 
-        childProcess.on('error', (error) => {
+        childProcess.on('error', (error: Error) => {
           const errorStatus: ServerStatus = {
             name: config.name,
             status: 'error',
@@ -43,7 +48,7 @@ export class ProcessManager {
           reject(error);
         });
 
-        childProcess.on('exit', (code, signal) => {
+        childProcess.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
           this.processes.delete(config.name);
           const currentStatus = this.serverStatuses.get(config.name);
           if (currentStatus) {
@@ -60,12 +65,17 @@ export class ProcessManager {
         });
 
         let stderr = '';
-        childProcess.stderr?.on('data', (data) => {
-          stderr += data.toString();
-        });
+        if (childProcess.stderr) {
+          childProcess.stderr.on('data', (data: Buffer) => {
+            stderr += data.toString();
+          });
+        }
 
-        childProcess.stdout?.on('data', (data) => {
-        });
+        if (childProcess.stdout) {
+          childProcess.stdout.on('data', (_data: Buffer) => {
+            // Output can be handled here if needed
+          });
+        }
 
         resolve();
       } catch (error: any) {
@@ -147,5 +157,10 @@ export class ProcessManager {
         status: 'stopped'
       });
     }
+  }
+
+  removeServer(name: string): void {
+    this.processes.delete(name);
+    this.serverStatuses.delete(name);
   }
 }

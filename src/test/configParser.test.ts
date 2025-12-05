@@ -22,21 +22,27 @@ suite('ConfigParser Tests', () => {
     const configPath = path.join(tempDir, 'mcp.yaml');
     const yamlContent = `version: "1.0"
 servers:
-  - name: test-server
+  test-server:
+    type: stdio
     command: node
     args:
       - server.js
     env:
       NODE_ENV: test
+inputs: []
 `;
     fs.writeFileSync(configPath, yamlContent, 'utf8');
 
     const config = ConfigParser.loadYamlConfig(configPath);
     assert.ok(config);
     assert.strictEqual(config.version, '1.0');
-    assert.strictEqual(config.servers.length, 1);
-    assert.strictEqual(config.servers[0].name, 'test-server');
-    assert.strictEqual(config.servers[0].command, 'node');
+    assert.ok(config.servers);
+    assert.ok(config.servers['test-server']);
+    assert.strictEqual(config.servers['test-server'].type, 'stdio');
+    if (config.servers['test-server'].type === 'stdio') {
+      assert.strictEqual(config.servers['test-server'].command, 'node');
+    }
+    assert.ok(Array.isArray(config.inputs));
   });
 
   test('should return null for non-existent file', () => {
@@ -57,21 +63,24 @@ servers:
     const config = ConfigParser.createDefaultConfig();
     assert.ok(config);
     assert.strictEqual(config.version, '1.0');
-    assert.ok(Array.isArray(config.servers));
-    assert.strictEqual(config.servers.length, 1);
+    assert.ok(config.servers);
+    assert.strictEqual(typeof config.servers, 'object');
+    assert.ok(config.servers['example-server']);
+    assert.ok(Array.isArray(config.inputs));
   });
 
   test('should save YAML config', () => {
     const configPath = path.join(tempDir, 'output.yaml');
     const config: McpYamlConfig = {
       version: '1.0',
-      servers: [
-        {
-          name: 'test',
+      servers: {
+        test: {
+          type: 'stdio',
           command: 'node',
           args: ['server.js']
         }
-      ]
+      },
+      inputs: []
     };
 
     ConfigParser.saveYamlConfig(configPath, config);
@@ -79,7 +88,7 @@ servers:
 
     const loaded = ConfigParser.loadYamlConfig(configPath);
     assert.ok(loaded);
-    assert.strictEqual(loaded.servers.length, 1);
+    assert.ok(loaded.servers.test);
   });
 });
 

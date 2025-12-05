@@ -6,72 +6,133 @@ suite('JsonTranspiler Tests', () => {
   test('should convert YAML config to JSON format', () => {
     const yamlConfig: McpYamlConfig = {
       version: '1.0',
-      servers: [
-        {
-          name: 'server1',
+      servers: {
+        server1: {
+          type: 'stdio',
           command: 'node',
           args: ['server.js'],
-          env: { NODE_ENV: 'production' },
-          cwd: './server'
+          env: { NODE_ENV: 'production' }
         },
-        {
-          name: 'server2',
+        server2: {
+          type: 'stdio',
           command: 'python',
           args: ['-m', 'mcp_server']
         }
-      ]
+      },
+      inputs: []
     };
 
     const jsonConfig = JsonTranspiler.yamlToJson(yamlConfig);
 
-    assert.ok(jsonConfig.mcpServers);
-    assert.ok(jsonConfig.mcpServers.server1);
-    assert.strictEqual(jsonConfig.mcpServers.server1.command, 'node');
-    assert.deepStrictEqual(jsonConfig.mcpServers.server1.args, ['server.js']);
-    assert.strictEqual(jsonConfig.mcpServers.server1.env?.NODE_ENV, 'production');
-    assert.strictEqual(jsonConfig.mcpServers.server1.cwd, './server');
+    assert.ok(jsonConfig.servers);
+    assert.ok(jsonConfig.servers.server1);
+    assert.strictEqual(jsonConfig.servers.server1.type, 'stdio');
+    if (jsonConfig.servers.server1.type === 'stdio') {
+      assert.strictEqual(jsonConfig.servers.server1.command, 'node');
+      assert.deepStrictEqual(jsonConfig.servers.server1.args, ['server.js']);
+      assert.strictEqual(jsonConfig.servers.server1.env?.NODE_ENV, 'production');
+    }
 
-    assert.ok(jsonConfig.mcpServers.server2);
-    assert.strictEqual(jsonConfig.mcpServers.server2.command, 'python');
+    assert.ok(jsonConfig.servers.server2);
+    assert.strictEqual(jsonConfig.servers.server2.type, 'stdio');
+    if (jsonConfig.servers.server2.type === 'stdio') {
+      assert.strictEqual(jsonConfig.servers.server2.command, 'python');
+    }
+    assert.ok(Array.isArray(jsonConfig.inputs));
   });
 
   test('should filter servers by running status', () => {
     const yamlConfig: McpYamlConfig = {
       version: '1.0',
-      servers: [
-        { name: 'server1', command: 'node', args: ['server.js'] },
-        { name: 'server2', command: 'python', args: ['-m', 'mcp'] },
-        { name: 'server3', command: 'npm', args: ['start'] }
-      ]
+      servers: {
+        server1: { type: 'stdio', command: 'node', args: ['server.js'] },
+        server2: { type: 'stdio', command: 'python', args: ['-m', 'mcp'] },
+        server3: { type: 'stdio', command: 'npm', args: ['start'] }
+      },
+      inputs: []
     };
 
     const runningServers = new Set(['server1', 'server3']);
+    const filteredServers: Record<string, any> = {};
+    for (const [name, config] of Object.entries(yamlConfig.servers)) {
+      if (runningServers.has(name)) {
+        filteredServers[name] = config;
+      }
+    }
     const jsonConfig = JsonTranspiler.yamlToJson({
       ...yamlConfig,
-      servers: yamlConfig.servers.filter(s => runningServers.has(s.name))
+      servers: filteredServers
     });
 
-    assert.ok(jsonConfig.mcpServers.server1);
-    assert.ok(jsonConfig.mcpServers.server3);
-    assert.strictEqual(jsonConfig.mcpServers.server2, undefined);
+    assert.ok(jsonConfig.servers.server1);
+    assert.ok(jsonConfig.servers.server3);
+    assert.strictEqual(jsonConfig.servers.server2, undefined);
   });
 
   test('should handle optional fields', () => {
     const yamlConfig: McpYamlConfig = {
       version: '1.0',
-      servers: [
-        {
-          name: 'minimal',
+      servers: {
+        minimal: {
+          type: 'stdio',
           command: 'node'
         }
-      ]
+      },
+      inputs: []
     };
 
     const jsonConfig = JsonTranspiler.yamlToJson(yamlConfig);
-    assert.ok(jsonConfig.mcpServers.minimal);
-    assert.strictEqual(jsonConfig.mcpServers.minimal.command, 'node');
-    assert.strictEqual(jsonConfig.mcpServers.minimal.args, undefined);
-    assert.strictEqual(jsonConfig.mcpServers.minimal.env, undefined);
+    assert.ok(jsonConfig.servers.minimal);
+    assert.strictEqual(jsonConfig.servers.minimal.type, 'stdio');
+    if (jsonConfig.servers.minimal.type === 'stdio') {
+      assert.strictEqual(jsonConfig.servers.minimal.command, 'node');
+      assert.strictEqual(jsonConfig.servers.minimal.args, undefined);
+      assert.strictEqual(jsonConfig.servers.minimal.env, undefined);
+    }
+  });
+
+  test('should handle HTTP server type', () => {
+    const yamlConfig: McpYamlConfig = {
+      version: '1.0',
+      servers: {
+        httpServer: {
+          type: 'http',
+          url: 'http://localhost:8000'
+        }
+      },
+      inputs: []
+    };
+
+    const jsonConfig = JsonTranspiler.yamlToJson(yamlConfig);
+    assert.ok(jsonConfig.servers.httpServer);
+    assert.strictEqual(jsonConfig.servers.httpServer.type, 'http');
+    if (jsonConfig.servers.httpServer.type === 'http') {
+      assert.strictEqual(jsonConfig.servers.httpServer.url, 'http://localhost:8000');
+    }
+  });
+
+  test('should handle mixed stdio and http servers', () => {
+    const yamlConfig: McpYamlConfig = {
+      version: '1.0',
+      servers: {
+        stdioServer: {
+          type: 'stdio',
+          command: 'node',
+          args: ['server.js']
+        },
+        httpServer: {
+          type: 'http',
+          url: 'http://localhost:8000'
+        }
+      },
+      inputs: []
+    };
+
+    const jsonConfig = JsonTranspiler.yamlToJson(yamlConfig);
+    assert.ok(jsonConfig.servers.stdioServer);
+    assert.ok(jsonConfig.servers.httpServer);
+    assert.strictEqual(jsonConfig.servers.stdioServer.type, 'stdio');
+    assert.strictEqual(jsonConfig.servers.httpServer.type, 'http');
   });
 });
 

@@ -32,31 +32,52 @@ Create a `mcp.yaml` file in your workspace root (or configure a custom path):
 ```yaml
 version: "1.0"
 servers:
-  - name: my-mcp-server
+  my-mcp-server:
+    type: stdio
     command: node
     args:
       - server.js
     env:
       NODE_ENV: production
       API_KEY: your-api-key
-    cwd: ./server-directory
+    disabled: false
+    autoApprove:
+      - execute_command
 
-  - name: another-server
+  another-server:
+    type: stdio
     command: python
     args:
       - -m
       - mcp_server
     env:
       PYTHONPATH: /path/to/python
+
+  http-server:
+    type: http
+    url: http://localhost:8000
+    disabled: false
+
+inputs: []
 ```
 
 ### Configuration Fields
 
-- **name** (required): Unique identifier for the server
-- **command** (required): Command to execute (e.g., `node`, `python`, `npm`)
-- **args** (optional): Array of command-line arguments
-- **env** (optional): Environment variables as key-value pairs
-- **cwd** (optional): Working directory for the server process
+**Server Configuration (servers object):**
+- Server name is the key in the `servers` object
+- **type** (required): Either `stdio` or `http`
+- For `stdio` type:
+  - **command** (required): Command to execute (e.g., `node`, `python`, `npm`)
+  - **args** (optional): Array of command-line arguments
+  - **env** (optional): Environment variables as key-value pairs
+- For `http` type:
+  - **url** (required): HTTP URL of the MCP server
+- **disabled** (optional): Boolean to disable the server
+- **autoApprove** (optional): Array of tool names to auto-approve
+- **disabledTools** (optional): Array of tool names to disable
+
+**Inputs:**
+- **inputs** (optional): Array of input configurations (currently empty array by default)
 
 ### VS Code Settings
 

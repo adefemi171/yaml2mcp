@@ -4,7 +4,8 @@
 version: "1.0"
 
 servers:
-  - name: production-server
+  production-server:
+    type: stdio
     command: node
     args:
       - dist/server.js
@@ -14,9 +15,13 @@ servers:
       NODE_ENV: production
       API_KEY: ${API_KEY}
       LOG_LEVEL: info
-    cwd: /path/to/server
+    disabled: false
+    autoApprove:
+      - execute_command
+      - read_file
 
-  - name: development-server
+  development-server:
+    type: stdio
     command: npm
     args:
       - run
@@ -24,9 +29,10 @@ servers:
     env:
       NODE_ENV: development
       DEBUG: "*"
-    cwd: ./server
+    disabled: false
 
-  - name: python-server
+  python-server:
+    type: stdio
     command: python3
     args:
       - -m
@@ -39,5 +45,12 @@ servers:
     env:
       PYTHONPATH: /usr/local/lib/python3.11/site-packages
       DATABASE_URL: postgresql://localhost/mydb
-    cwd: ./python-server
+    disabled: false
+
+  http-server:
+    type: http
+    url: http://localhost:8000
+    disabled: false
+
+inputs: []
 

@@ -1,20 +1,17 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { McpYamlConfig, McpJsonConfig } from './types';
+import { McpYamlConfig, McpJsonConfig, ServerConfig } from './types';
 
 export class JsonTranspiler {
   static yamlToJson(yamlConfig: McpYamlConfig): McpJsonConfig {
     const jsonConfig: McpJsonConfig = {
-      mcpServers: {}
+      servers: {},
+      inputs: yamlConfig.inputs || []
     };
 
-    for (const server of yamlConfig.servers) {
-      jsonConfig.mcpServers[server.name] = {
-        command: server.command,
-        ...(server.args && { args: server.args }),
-        ...(server.env && { env: server.env }),
-        ...(server.cwd && { cwd: server.cwd })
-      };
+    // Copy servers object directly (already in correct format)
+    for (const [serverName, serverConfig] of Object.entries(yamlConfig.servers)) {
+      jsonConfig.servers[serverName] = { ...serverConfig };
     }
 
     return jsonConfig;
@@ -39,11 +36,17 @@ export class JsonTranspiler {
     yamlConfig: McpYamlConfig,
     runningServerNames: Set<string>
   ): void {
+    // Filter servers to only include running ones
+    const filteredServers: Record<string, ServerConfig> = {};
+    for (const [serverName, serverConfig] of Object.entries(yamlConfig.servers)) {
+      if (runningServerNames.has(serverName)) {
+        filteredServers[serverName] = serverConfig;
+      }
+    }
+
     const filteredConfig: McpYamlConfig = {
       ...yamlConfig,
-      servers: yamlConfig.servers.filter(server =>
-        runningServerNames.has(server.name)
-      )
+      servers: filteredServers
     };
 
     const jsonConfig = this.yamlToJson(filteredConfig);

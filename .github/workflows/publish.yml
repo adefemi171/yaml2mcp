@@ -150,15 +150,33 @@ jobs:
           
           if [ -z "$PREV_TAG" ]; then
             # First release - get all commits
-            NOTES=$(git log --pretty=format:"- %s (%h)" --reverse | head -n 50)
+            COMMITS=$(git log --pretty=format:"%s|%h" --reverse | head -n 50)
           else
             # Get commits since last tag
-            NOTES=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --reverse)
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s|%h" --reverse)
           fi
+          
+          # Deduplicate commit messages (keep first occurrence of each unique message)
+          # Use awk to track seen messages and only output unique ones
+          UNIQUE_COMMITS=$(echo "$COMMITS" | awk -F'|' '{
+            # Normalize message: remove leading/trailing whitespace, convert to lowercase for comparison
+            msg = $1
+            gsub(/^[ \t]+|[ \t]+$/, "", msg)
+            msg_lower = tolower(msg)
+            
+            # Skip if we've seen this message before
+            if (!seen[msg_lower]) {
+              seen[msg_lower] = 1
+              print $1 "|" $2
+            }
+          }')
+          
+          # Format as release notes
+          NOTES=$(echo "$UNIQUE_COMMITS" | awk -F'|' '{print "- " $1 " (" $2 ")"}')
           
           # Create release notes file
           {
-            echo "## 🔄⚙️ YAML2MCP $TAG"
+            echo "## YAML2MCP $TAG"
             echo ""
             echo "### Changes"
             echo "$NOTES"
@@ -207,7 +225,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.validate-version.outputs.version }}
-          name: 🔄⚙️ YAML2MCP v${{ needs.validate-version.outputs.version }}
+          name: YAML2MCP v${{ needs.validate-version.outputs.version }}
           body_path: release_notes.md
           files: ${{ steps.vsix.outputs.filename }}
           draft: false

@@ -79,6 +79,30 @@ export function activate(context: vscode.ExtensionContext) {
       await stopServer(item.label, paths.yamlPath, paths.jsonPath);
     });
 
+    const deleteCommand = vscode.commands.registerCommand('yaml2mcp.deleteServer', async (item: ServerTreeItem) => {
+      if (!item || item.isPlaceholder) {
+        return;
+      }
+
+      const paths = getPaths();
+      if (!paths) {
+        vscode.window.showWarningMessage('YAML2MCP: Please open a workspace folder first');
+        return;
+      }
+
+      const confirm = await vscode.window.showWarningMessage(
+        `Are you sure you want to delete the server "${item.label}"? This will remove it from the YAML configuration.`,
+        { modal: true },
+        'Delete'
+      );
+
+      if (confirm !== 'Delete') {
+        return;
+      }
+
+      await deleteServer(item.label, paths.yamlPath, paths.jsonPath);
+    });
+
     const refreshCommand = vscode.commands.registerCommand('yaml2mcp.refresh', () => {
       const paths = getPaths();
       if (!paths) {
@@ -115,6 +139,7 @@ export function activate(context: vscode.ExtensionContext) {
       treeView,
       startCommand,
       stopCommand,
+      deleteCommand,
       refreshCommand,
       openConfigCommand
     );
@@ -148,21 +173,32 @@ function loadAndSyncConfig(yamlPath: string, jsonPath: string): void {
     if (!yamlConfig) {
       const jsonConfig = JsonTranspiler.readJsonConfig(jsonPath);
       if (jsonConfig) {
-        Object.keys(jsonConfig.mcpServers).forEach(name => {
-          processManager.initializeStatus({
-            name,
-            command: jsonConfig.mcpServers[name].command,
-            args: jsonConfig.mcpServers[name].args,
-            env: jsonConfig.mcpServers[name].env,
-            cwd: jsonConfig.mcpServers[name].cwd
-          });
+        Object.entries(jsonConfig.servers).forEach(([name, serverConfig]) => {
+          if (serverConfig.type === 'stdio') {
+            processManager.initializeStatus({
+              name,
+              command: serverConfig.command,
+              args: serverConfig.args,
+              env: serverConfig.env,
+              type: 'stdio'
+            });
+          }
         });
       }
       return;
     }
 
-    yamlConfig.servers.forEach(server => {
-      processManager.initializeStatus(server);
+    // Initialize status for all stdio servers (http servers don't need process management)
+    Object.entries(yamlConfig.servers).forEach(([name, serverConfig]) => {
+      if (serverConfig.type === 'stdio' && !serverConfig.disabled) {
+        processManager.initializeStatus({
+          name,
+          command: serverConfig.command,
+          args: serverConfig.args,
+          env: serverConfig.env,
+          type: 'stdio'
+        });
+      }
     });
 
     const runningServers = new Set(processManager.getRunningServers());
@@ -182,16 +218,34 @@ async function startServer(serverName: string, yamlPath: string, jsonPath: strin
       return;
     }
 
-    const serverConfig = yamlConfig.servers.find(s => s.name === serverName);
+    const serverConfig = yamlConfig.servers[serverName];
     if (!serverConfig) {
       vscode.window.showErrorMessage(`Server ${serverName} not found in configuration`);
       return;
     }
 
-    await processManager.startServer(serverConfig, (_name) => {
-      loadAndSyncConfig(yamlPath, jsonPath);
-      treeDataProvider.refresh();
-    });
+    // Only start stdio servers (http servers don't need process management)
+    if (serverConfig.type === 'stdio') {
+      if (serverConfig.disabled) {
+        vscode.window.showWarningMessage(`Server ${serverName} is disabled`);
+        return;
+      }
+
+      const processConfig: McpServerConfig = {
+        name: serverName,
+        command: serverConfig.command,
+        args: serverConfig.args,
+        env: serverConfig.env,
+        type: 'stdio'
+      };
+
+      await processManager.startServer(processConfig, (_name) => {
+        loadAndSyncConfig(yamlPath, jsonPath);
+        treeDataProvider.refresh();
+      });
+    } else {
+      vscode.window.showInformationMessage(`HTTP server ${serverName} does not require starting (already accessible)`);
+    }
 
     const runningServers = new Set(processManager.getRunningServers());
     JsonTranspiler.updateJsonWithRunningServers(jsonPath, yamlConfig, runningServers);
@@ -218,6 +272,37 @@ async function stopServer(serverName: string, yamlPath: string, jsonPath: string
     vscode.window.showInformationMessage(`Stopped MCP server: ${serverName}`);
   } catch (error: any) {
     vscode.window.showErrorMessage(`Failed to stop server: ${error.message}`);
+    treeDataProvider.refresh();
+  }
+}
+
+async function deleteServer(serverName: string, yamlPath: string, jsonPath: string): Promise<void> {
+  try {
+    await processManager.stopServer(serverName);
+
+    const yamlConfig = ConfigParser.loadYamlConfig(yamlPath);
+    if (!yamlConfig) {
+      vscode.window.showErrorMessage('MCP YAML configuration not found');
+      return;
+    }
+
+    if (!yamlConfig.servers[serverName]) {
+      vscode.window.showErrorMessage(`Server ${serverName} not found in configuration`);
+      return;
+    }
+
+    delete yamlConfig.servers[serverName];
+    ConfigParser.saveYamlConfig(yamlPath, yamlConfig);
+
+    processManager.removeServer(serverName);
+
+    const runningServers = new Set(processManager.getRunningServers());
+    JsonTranspiler.updateJsonWithRunningServers(jsonPath, yamlConfig, runningServers);
+
+    treeDataProvider.refresh();
+    vscode.window.showInformationMessage(`Deleted MCP server: ${serverName}`);
+  } catch (error: any) {
+    vscode.window.showErrorMessage(`Failed to delete server: ${error.message}`);
     treeDataProvider.refresh();
   }
 }

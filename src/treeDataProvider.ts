@@ -35,9 +35,9 @@ export class McpTreeDataProvider implements vscode.TreeDataProvider<ServerTreeIt
     });
 
     if (items.length === 0) {
-      return Promise.resolve([
-        new ServerTreeItem('No servers configured', 'stopped', undefined, true)
-      ]);
+      const placeholder = new ServerTreeItem('No servers configured', 'stopped', undefined, true);
+      placeholder.contextValue = 'placeholder';
+      return Promise.resolve([placeholder]);
     }
 
     return Promise.resolve(items);

@@ -4,8 +4,11 @@
 version: "1.0"
 
 servers:
-  - name: my-server
+  my-server:
+    type: stdio
     command: node
     args:
       - server.js
+
+inputs: []
 

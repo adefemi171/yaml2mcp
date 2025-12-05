@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { McpYamlConfig, McpServerConfig } from './types';
+import { McpYamlConfig, ServerConfig } from './types';
 
 export class ConfigParser {
   static loadYamlConfig(filePath: string): McpYamlConfig | null {
@@ -11,13 +11,25 @@ export class ConfigParser {
       }
 
       const fileContents = fs.readFileSync(filePath, 'utf8');
-      const data = yaml.load(fileContents) as McpYamlConfig;
+      const data = yaml.load(fileContents) as any;
 
-      if (!data || !Array.isArray(data.servers)) {
-        throw new Error('Invalid YAML structure: expected "servers" array');
+      if (!data) {
+        throw new Error('Invalid YAML structure: empty file');
       }
 
-      return data;
+      // Ensure servers is an object
+      if (!data.servers || typeof data.servers !== 'object' || Array.isArray(data.servers)) {
+        throw new Error('Invalid YAML structure: expected "servers" to be an object');
+      }
+
+      // Ensure inputs is an array (or initialize as empty array)
+      if (data.inputs === undefined) {
+        data.inputs = [];
+      } else if (!Array.isArray(data.inputs)) {
+        throw new Error('Invalid YAML structure: expected "inputs" to be an array');
+      }
+
+      return data as McpYamlConfig;
     } catch (error: any) {
       throw new Error(`Failed to parse YAML config: ${error.message}`);
     }
@@ -28,7 +40,9 @@ export class ConfigParser {
       const yamlContent = yaml.dump(config, {
         indent: 2,
         lineWidth: -1,
-        noRefs: true
+        noRefs: true,
+        sortKeys: false,
+        flowLevel: -1
       });
 
       const dir = path.dirname(filePath);
@@ -45,14 +59,18 @@ export class ConfigParser {
   static createDefaultConfig(): McpYamlConfig {
     return {
       version: '1.0',
-      servers: [
-        {
-          name: 'example-server',
+      servers: {
+        'example-server': {
+          type: 'stdio',
           command: 'node',
-          args: ['server.js'],
+          args: [
+            '-e',
+            "console.log('MCP Server Running'); setInterval(() => {}, 1000);"
+          ],
           env: {}
         }
-      ]
+      },
+      inputs: []
     };
   }
 }
