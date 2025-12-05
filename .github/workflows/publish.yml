@@ -25,6 +25,7 @@ jobs:
 
       - name: Extract version from tag
         id: extract
+        shell: bash
         run: |
           if [ "${{ github.event_name }}" == "release" ]; then
             VERSION="${{ github.event.release.tag_name }}"
@@ -36,7 +37,7 @@ jobs:
           VERSION=${VERSION#v}
           
           # Validate semver format
-          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9-]+(\.[0-9]+)?)?(\+[a-zA-Z0-9-]+)?$ ]]; then
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9-]+(\.[0-9]+)?)?(\+[a-zA-Z0-9-]+)?$ ]]; then
             echo "Error: Invalid semantic version format: $VERSION"
             echo "Expected format: MAJOR.MINOR.PATCH (e.g., 1.0.0)"
             exit 1
@@ -138,6 +139,7 @@ jobs:
 
       - name: Generate release notes
         id: release_notes
+        shell: bash
         run: |
           VERSION="${{ needs.validate-version.outputs.version }}"
           TAG="v$VERSION"
@@ -164,7 +166,7 @@ jobs:
             gsub(/^[ \t]+|[ \t]+$/, "", msg)
             msg_lower = tolower(msg)
             
-            # Skip if we've seen this message before
+            # Skip if we have seen this message before
             if (!seen[msg_lower]) {
               seen[msg_lower] = 1
               print $1 "|" $2
